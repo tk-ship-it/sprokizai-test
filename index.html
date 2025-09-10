@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Equipment Gallery — Final Integrated Version</title>
+<style>
+  :root{
+    --bg:#ffffff; --ink:#222; --muted:#666; --line:#e6e6e6; --chip:#f4f4f4; --chip-ink:#111;
+  }
+  *{box-sizing:border-box}
+  body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;margin:0;background:var(--bg);color:var(--ink)}
+  header{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line)}
+  .wrap{max-width:1200px;margin:0 auto;padding:16px}
+  h1{font-size:22px;font-weight:700;letter-spacing:.02em;margin:0}
+  .top{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;margin-top:8px}
+  .search{flex:1 1 360px;display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:12px;padding:8px 12px;background:#fafafa}
+  .search input{flex:1;border:none;background:transparent;font-size:14px;outline:none}
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .chips button{appearance:none;border:1px solid var(--line);background:var(--chip);color:var(--ink);padding:6px 10px;border-radius:999px;font-size:13px;cursor:pointer}
+  .chips button.active{background:#111;color:#fff;border-color:#111}
+
+  main{padding:16px 0}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px}
+  .card{border:1px solid var(--line);border-radius:16px;overflow:hidden;background:#fff;cursor:pointer;transition:transform .15s ease, box-shadow .15s ease}
+  .card:hover{transform:translateY(-2px);box-shadow:0 10px 30px rgba(0,0,0,.06)}
+  .thumb{width:100%;height:160px;object-fit:cover;display:block;background:#f6f6f6}
+  .card-body{padding:12px}
+  .name{font-size:14px;font-weight:600;margin:0 0 4px}
+  .desc{font-size:12px;color:var(--muted);margin:0}
+
+  /* Modal */
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:flex-start;justify-content:center;padding:40px 20px;overflow-y:auto}
+  .modal.open{display:flex}
+  .dialog{background:#fff;border-radius:16px;max-width:920px;width:100%;margin-top:60px;box-shadow:0 30px 80px rgba(0,0,0,.35);display:flex;flex-direction:column}
+  .dialog-head{position:sticky;top:0;background:#fff;border-bottom:1px solid var(--line);padding:12px 16px;z-index:2}
+  .title-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  #modalTitle{font-size:16px;font-weight:700}
+  #modalSubtitle{font-size:12px;color:var(--muted);margin-top:4px}
+  .close-btn{appearance:none;border:1px solid var(--line);background:#f7f7f7;padding:6px 10px;border-radius:10px;cursor:pointer}
+  .dialog-body{padding:16px}
+
+  /* Slider */
+  .slider{position:relative;border-radius:12px;overflow:hidden}
+  .slides{display:flex;transition:transform .3s ease}
+  .slide{flex:0 0 100%;display:flex;align-items:center;justify-content:center;background:#f4f4f4}
+  .slide img{width:100%;height:auto;max-height:60vh;object-fit:contain}
+  .arrow{position:absolute;top:50%;transform:translateY(-50%);border:none;background:rgba(0,0,0,.5);color:#fff;width:36px;height:36px;border-radius:50%;cursor:pointer}
+  .arrow.left{left:8px}
+  .arrow.right{right:8px}
+
+  .meta{display:flex;align-items:center;gap:10px;margin:12px 0}
+  .meta .label{font-size:12px;color:var(--muted)}
+  .meta .pill{appearance:none;border:1px solid var(--line);background:#fafafa;border-radius:999px;padding:6px 10px;font-size:12px;cursor:pointer}
+
+  .related{margin-top:18px}
+  .related h3{font-size:13px;margin:0 0 8px;color:var(--muted)}
+  .related .grid{grid-template-columns:repeat(auto-fill,minmax(140px,1fr))}
+
+  @media(max-width:600px){
+    .grid{grid-template-columns:repeat(3,1fr)}
+    .thumb{height:120px}
+  }
+
+  .card-body .box-label {
+    display:block;
+    margin-top:4px;
+    font-size:0.8em;
+    color:#666;
+  }
+</style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <h1>&nbsp;SPRO機材管理サイト</h1>
+      <div class="top">
+        <div class="search" aria-label="Search">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M21 21l-4.3-4.3" stroke="#888" stroke-width="1.5" stroke-linecap="round"/><circle cx="11" cy="11" r="7" stroke="#888" stroke-width="1.5" fill="none"/></svg>
+          <input id="searchInput" type="text" placeholder="Search..." />
+        </div>
+        <div class="chips" role="tablist">
+          <button data-cat="All" class="active" role="tab">All</button>
+          <button data-cat="Camera" role="tab">Camera</button>
+          <button data-cat="Audio" role="tab">Audio</button>
+          <button data-cat="Lighting" role="tab">Lighting</button>
+          <button data-cat="Others" role="tab">Others</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div class="grid" id="grid"></div>
+  </main>
+
+  <!-- Modal -->
+  <div class="modal" id="modal" aria-modal="true" role="dialog">
+    <div class="dialog">
+      <div class="dialog-head">
+        <div class="title-row">
+          <div>
+            <div id="modalTitle">Title</div>
+            <div id="modalSubtitle">Description here</div>
+          </div>
+          <button class="close-btn" id="modalClose">Close</button>
+        </div>
+      </div>
+      <div class="dialog-body">
+        <div class="slider">
+          <div class="slides" id="slides"></div>
+          <button class="arrow left" id="prev" aria-label="Previous">&#10094;</button>
+          <button class="arrow right" id="next" aria-label="Next">&#10095;</button>
+        </div>
+        <div class="meta">
+          <span class="label">Storage Location:</span>
+          <button class="pill" id="modalBox"></button>
+        </div>
+        <div class="related" id="related" style="display:none">
+          <h3>Other items in this Storage Location</h3>
+          <div class="grid" id="relatedGrid"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  // ---------- Data ----------
+  const items = [];
+
+  items.push({
+    id: 1,
+    name: "Black magic",
+    category: "Camera",
+    desc: "テストで掲載中",
+    box: "ペリカン",
+    image: "images/Black Magic/Blackmagic_0908.png",
+    detailImages: [
+      "images/Black Magic/Blackmagic_0908.png",
+		"images/Black Magic/Blackmagic_0908.png",
+		"images/Black Magic/Blackmagic_0908.png",
+      "images/Black Magic/Blackmagic_0908.png",
+		"images/Black Magic/Blackmagic_0908.png",
+    ]
+  });
+
+  items.push({
+    id: 2,
+    name: "Canon 5D MarkⅡ",
+    category: "Camera",
+    desc: "テストで掲載中２",
+    box: "オレンジの箱1",
+    image: "images/Canon 5D/camera2_0905.png",
+    detailImages: [
+      "images/Canon 5D/camera2_0905.png",
+		"images/Canon 5D/camera2_0905.png",
+		"images/Canon 5D/camera2_0905.png",
+		"images/Canon 5D/camera2_0905.png",
+		"images/Canon 5D/camera2_0905.png",
+		"images/Canon 5D/camera2_0905.png",
+    ]
+  });
+
+  items.push({
+    id: 3,
+    name: "カメラレンズ1",
+    category: "Camera",
+    desc: "テストで掲載中",
+    box: "ペリカン",
+    image: "images/レンズ1/lens_１.png",
+    detailImages: [
+      "images/レンズ1/lens_１.png",
+		"images/レンズ1/lens_１.png",
+		"images/レンズ1/lens_１.png",
+		"images/レンズ1/lens_１.png",
+		"images/レンズ1/lens_１.png",
+    ]
+  });
+	
+items.push({
+    id: 3,
+    name: "カメラレンズ1",
+    category: "Camera",
+    desc: "テストで掲載中",
+    box: "ペリカン",
+    image: "images/レンズ1/lens_１.png",
+    detailImages: [
+      "images/レンズ1/lens_１.png",
+		"images/レンズ1/lens_１.png",
+		"images/レンズ1/lens_１.png",
+		"images/レンズ1/lens_１.png",
+		"images/レンズ1/lens_１.png",
+    ]
+  });
+
+  items.push({
+    id: 4,
+    name: "カメラレンズ2",
+    category: "Camera",
+    desc: "テストで掲載中２",
+    box: "ペリカン",
+    image: "images/レンズ1/lens_１.png",
+    detailImages: [
+      "images/レンズ1/lens_１.png",
+		"images/レンズ1/lens_１.png",
+		"images/レンズ1/lens_１.png",
+		"images/レンズ1/lens_１.png",
+		"images/レンズ1/lens_１.png",
+		
+    ]
+  });
+	
+	 items.push({
+    id: 4,
+    name: "ZOOM",
+    category: "Audio",
+    desc: "テストで掲載中２",
+    box: "オレンジの箱1",
+    image: "images/ZOOM/ZOOM.png",
+    detailImages: [
+     "images/ZOOM/ZOOM.png",
+		"images/ZOOM/ZOOM.png",
+		"images/ZOOM/ZOOM.png",
+		"images/ZOOM/ZOOM.png",
+		"images/ZOOM/ZOOM.png",
+		
+    ]
+  });
+
+  // ---------- UI State ----------
+  const grid = document.getElementById('grid');
+  const modal = document.getElementById('modal');
+  const modalTitle = document.getElementById('modalTitle');
+  const modalSubtitle = document.getElementById('modalSubtitle');
+  const modalBox = document.getElementById('modalBox');
+  const slides = document.getElementById('slides');
+  const related = document.getElementById('related');
+  const relatedGrid = document.getElementById('relatedGrid');
+  const searchInput = document.getElementById('searchInput');
+
+  let current = 0, currentImages = [];
+  let activeCat = 'All', searchQuery = '';
+
+  function normalizeText(str){
+    return (str||'').toLowerCase().trim();
+  }
+
+  // ---------- Render Cards ----------
+  function renderCards(){
+    grid.innerHTML = '';
+    const q = normalizeText(searchQuery);
+    items
+      .filter(it => (activeCat==='All' || it.category===activeCat) &&
+              (normalizeText(it.name).includes(q) || 
+               normalizeText(it.desc).includes(q) || 
+               normalizeText(it.box).includes(q)))
+      .forEach(it => {
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.innerHTML = `
+          <img src="${it.image}" class="thumb" alt="${it.name}">
+          <div class="card-body">
+            <p class="name">${it.name}</p>
+            <p class="desc">${it.desc}</p>
+            <span class="box-label">Storage Location: ${it.box}</span>
+          </div>`;
+        card.onclick = () => openModal(it);
+        grid.appendChild(card);
+      });
+  }
+
+  // ---------- Modal ----------
+  function openModal(it){
+    modal.classList.add('open');
+    modal.scrollTop = 0;
+    modalTitle.textContent = it.name;
+    modalSubtitle.textContent = it.desc;
+    modalBox.textContent = it.box;
+    modalBox.onclick = () => showRelated(it.box, it.id);
+    current = 0;
+    currentImages = it.detailImages.slice();
+    renderSlides();
+    related.style.display = 'none';
+  }
+
+  function renderSlides(){
+    slides.innerHTML = '';
+    currentImages.forEach(src => {
+      const s = document.createElement('div');
+      s.className = 'slide';
+      s.innerHTML = `<img src="${src}" alt="detail image">`;
+      slides.appendChild(s);
+    });
+    slides.style.transform = `translateX(-${current*100}%)`;
+  }
+
+  document.getElementById('prev').onclick = () => { if(current>0){ current--; renderSlides(); } };
+  document.getElementById('next').onclick = () => { if(current<currentImages.length-1){ current++; renderSlides(); } };
+  document.getElementById('modalClose').onclick = () => modal.classList.remove('open');
+
+  // ---------- Related ----------
+  function showRelated(box, excludeId){
+    related.style.display = 'block';
+    relatedGrid.innerHTML = '';
+    items
+      .filter(it => it.box === box && it.id !== excludeId)
+      .forEach(it => {
+        const c = document.createElement('div');
+        c.className = 'card';
+        c.innerHTML = `
+          <img src="${it.image}" class="thumb" alt="${it.name}">
+          <div class="card-body">
+            <p class="name">${it.name}</p>
+            <p class="desc">${it.desc}</p>
+            <p class="box-label">Storage Location: ${it.box}</p>
+          </div>`;
+        c.onclick = () => openModal(it);
+        relatedGrid.appendChild(c);
+      });
+  }
+
+  // ---------- Filters & Search ----------
+  document.querySelectorAll('.chips button').forEach(btn => {
+    btn.onclick = () => {
+      activeCat = btn.dataset.cat;
+      document.querySelectorAll('.chips button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      renderCards();
+    };
+  });
+
+  searchInput.oninput = () => { searchQuery = searchInput.value; renderCards(); };
+
+  // Initial render
+  renderCards();
+</script>
+</body>
+</html>
